@@ -27,7 +27,13 @@
 
 Scene* HelloWorld::createScene()
 {
-    return HelloWorld::create();
+	auto scene = Scene::createWithPhysics();
+	auto layer = HelloWorld::create();
+	scene->addChild(layer);
+	auto world = scene->getPhysicsWorld();
+	auto gravity = Vec2(0.0f, -198.0f);
+	world->setGravity(gravity);
+	return scene;
 }
 
 // Print useful error message instead of segfaulting when files are not there.
@@ -50,42 +56,35 @@ bool HelloWorld::init()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
-    /////////////////////////////
-    // 2. add a menu item with "X" image, which is clicked to quit the program
-    //    you may modify it.
+	// enable Accelerometer
+	Device::setAccelerometerEnabled(true);
+	
+	// acceleration listener
+	auto accelerateListener = EventListenerAcceleration::create(
+		CC_CALLBACK_2(HelloWorld::onAccelerated,this));
+	getEventDispatcher()->addEventListenerWithSceneGraphPriority(
+		accelerateListener, this);
 
-    // add a "close" icon to exit the progress. it's an autorelease object
-    auto closeItem = MenuItemImage::create(
-                                           "CloseNormal.png",
-                                           "CloseSelected.png",
-                                           CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
+	// wall
+	auto wall = Sprite::create();
+	wall->setPosition(Vec2(origin.x + visibleSize.width/2,origin.y + visibleSize.height/2));
+	auto wallBody = PhysicsBody::createEdgeBox(visibleSize,
+		PhysicsMaterial(0.1f, 1.0f, 0.0f));
+	wall->setPhysicsBody(wallBody);
+	this->addChild(wall);
 
-    if (closeItem == nullptr ||
-        closeItem->getContentSize().width <= 0 ||
-        closeItem->getContentSize().height <= 0)
-    {
-        problemLoading("'CloseNormal.png' and 'CloseSelected.png'");
-    }
-    else
-    {
-        float x = origin.x + visibleSize.width - closeItem->getContentSize().width/2;
-        float y = origin.y + closeItem->getContentSize().height/2;
-        closeItem->setPosition(Vec2(x,y));
-    }
-
-    // create menu, it's an autorelease object
-    auto menu = Menu::create(closeItem, NULL);
-    menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 1);
-
-    /////////////////////////////
-    // 3. add your codes below...
-
-
+	// ball
+	auto ball = Sprite::create("ball.png");
+	float radius = ball->getContentSize().width / 2;
+	ball->setPosition(visibleSize / 2);
+	auto ballBody = PhysicsBody::createCircle(radius,
+		PhysicsMaterial(1.0, 0.8, 0.2));
+	ballBody->setDynamic(true);
+	ball->setPhysicsBody(ballBody);
+	this->addChild(ball);
 
     return true;
 }
-
 
 void HelloWorld::menuCloseCallback(Ref* pSender)
 {
@@ -97,5 +96,19 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
     //EventCustom customEndEvent("game_scene_close_event");
     //_eventDispatcher->dispatchEvent(&customEndEvent);
 
+
+}
+
+void HelloWorld::onAccelerated(Acceleration* acceleration, Event* event)
+{
+	Vec2 gravity(acceleration->x * 120, acceleration->y * 120);
+	_physicsWorld->setGravity(gravity);
+}
+
+void HelloWorld::onEnter()
+{
+	Scene::onEnter();
+
+	_physicsWorld = Director::getInstance()->getRunningScene()->getPhysicsWorld();
 
 }
